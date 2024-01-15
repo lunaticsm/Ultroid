@@ -120,10 +120,7 @@ async def gpoto(e):
     elif ult:
         split = ult.split()
         user_id = split[0]
-        if len(ult) > 1:
-            ult = ult[-1]
-        else:
-            ult = None
+        ult = ult[-1] if len(ult) > 1 else None
     else:
         user_id = e.chat_id
 

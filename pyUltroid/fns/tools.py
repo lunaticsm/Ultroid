@@ -64,10 +64,10 @@ except ImportError:
 async def get_ofox(codename):
     ofox_baseurl = "https://api.orangefox.download/v3/"
     releases = await async_searcher(
-        ofox_baseurl + "releases?codename=" + codename, re_json=True
+        f"{ofox_baseurl}releases?codename={codename}", re_json=True
     )
     device = await async_searcher(
-        ofox_baseurl + "devices/get?codename=" + codename, re_json=True
+        f"{ofox_baseurl}devices/get?codename={codename}", re_json=True
     )
     return device, releases
 
@@ -179,7 +179,7 @@ def get_msg_button(texts: str):
             btn.append([[text, url]])
 
     txt = texts
-    for z in re.findall("\\[.+?\\|.+?\\]", texts):
+    for z in re.findall("\\[.+?\\|.+?\\]", txt):
         txt = txt.replace(z, "")
 
     return txt.strip(), btn
@@ -233,7 +233,7 @@ _webupload_cache = {}
 
 
 async def webuploader(chat_id: int, msg_id: int, uploader: str):
-    file = _webupload_cache[int(chat_id)][int(msg_id)]
+    file = _webupload_cache[chat_id][msg_id]
     sites = {
         "anonfiles": {"url": "https://api.anonfiles.com/upload", "json": True},
         "siasky": {"url": "https://siasky.net/skynet/skyfile", "json": True},
@@ -259,16 +259,18 @@ async def webuploader(chat_id: int, msg_id: int, uploader: str):
             except KeyError:
                 link = status["data"]["file"]["url"]["short"]
             return link
-    del _webupload_cache[int(chat_id)][int(msg_id)]
+    del _webupload_cache[chat_id][msg_id]
     return status
 
 
 def get_all_files(path, extension=None):
     filelist = []
     for root, dirs, files in os.walk(path):
-        for file in files:
-            if not (extension and not file.endswith(extension)):
-                filelist.append(os.path.join(root, file))
+        filelist.extend(
+            os.path.join(root, file)
+            for file in files
+            if not extension or file.endswith(extension)
+        )
     return sorted(filelist)
 
 
@@ -283,8 +285,7 @@ def text_set(text):
                 lines.append(line)
             else:
                 k = len(line) // 55
-                for z in range(1, k + 2):
-                    lines.append(line[((z - 1) * 55) : (z * 55)])
+                lines.extend(line[((z - 1) * 55) : (z * 55)] for z in range(1, k + 2))
     return lines[:25]
 
 
@@ -375,7 +376,6 @@ async def get_google_images(query):
         ),
         "lxml",
     )
-    google_images = []
     all_script_tags = soup.select("script")
     matched_images_data = "".join(
         re.findall(r"AF_initDataCallback\(([^<]+)\);", str(all_script_tags))
@@ -412,23 +412,27 @@ async def get_google_images(query):
         )
         for img in matched_google_full_resolution_images
     ]
-    for index, (metadata, thumbnail, original) in enumerate(
-        zip(soup.select(".isv-r.PNCib.MSM1fd.BUooTd"), thumbnails, full_res_images),
-        start=1,
-    ):
-        google_images.append(
-            {
-                "title": metadata.select_one(".VFACy.kGQAp.sMi44c.lNHeqe.WGvvNb")[
-                    "title"
-                ],
-                "link": metadata.select_one(".VFACy.kGQAp.sMi44c.lNHeqe.WGvvNb")[
-                    "href"
-                ],
-                "source": metadata.select_one(".fxgdke").text,
-                "thumbnail": thumbnail,
-                "original": original,
-            }
+    google_images = [
+        {
+            "title": metadata.select_one(".VFACy.kGQAp.sMi44c.lNHeqe.WGvvNb")[
+                "title"
+            ],
+            "link": metadata.select_one(".VFACy.kGQAp.sMi44c.lNHeqe.WGvvNb")[
+                "href"
+            ],
+            "source": metadata.select_one(".fxgdke").text,
+            "thumbnail": thumbnail,
+            "original": original,
+        }
+        for index, (metadata, thumbnail, original) in enumerate(
+            zip(
+                soup.select(".isv-r.PNCib.MSM1fd.BUooTd"),
+                thumbnails,
+                full_res_images,
+            ),
+            start=1,
         )
+    ]
     random.shuffle(google_images)
     return google_images
 
@@ -481,14 +485,14 @@ def stdr(seconds):
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
     if len(str(minutes)) == 1:
-        minutes = "0" + str(minutes)
+        minutes = f"0{str(minutes)}"
     if len(str(hours)) == 1:
-        hours = "0" + str(hours)
+        hours = f"0{str(hours)}"
     if len(str(seconds)) == 1:
-        seconds = "0" + str(seconds)
+        seconds = f"0{str(seconds)}"
     return (
-        ((str(hours) + ":") if hours else "00:")
-        + ((str(minutes) + ":") if minutes else "00:")
+        (f"{str(hours)}:" if hours else "00:")
+        + (f"{str(minutes)}:" if minutes else "00:")
         + ((str(seconds)) if seconds else "")
     )
 
@@ -603,13 +607,13 @@ async def Carbon(
     con = await async_searcher(base_url, post=True, json=kwargs, re_content=True)
     if not download:
         file = BytesIO(con)
-        file.name = file_name + ".jpg"
+        file.name = f"{file_name}.jpg"
     else:
         try:
             return json_parser(con.decode())
         except Exception:
             pass
-        file = file_name + ".jpg"
+        file = f"{file_name}.jpg"
         with open(file, "wb") as f:
             f.write(con)
     return file
@@ -652,8 +656,7 @@ def _package_rpc(text, lang_src="auto", lang_tgt="auto"):
     escaped_parameter = json.dumps(parameter, separators=(",", ":"))
     rpc = [[[random.choice(GOOGLE_TTS_RPC), escaped_parameter, None, "generic"]]]
     espaced_rpc = json.dumps(rpc, separators=(",", ":"))
-    freq = "f.req={}&".format(quote(espaced_rpc))
-    return freq
+    return f"f.req={quote(espaced_rpc)}&"
 
 
 def translate(*args, **kwargs):
@@ -669,14 +672,11 @@ def translate(*args, **kwargs):
         headers=headers,
         data=_package_rpc(*args, **kwargs),
     ).text
-    response = ""
     data = json.loads(json.loads(x[4:])[0][2])[1][0][0]
     subind = data[-2]
     if not subind:
         subind = data[-1]
-    for i in subind:
-        response += i[0]
-    return response
+    return "".join(i[0] for i in subind)
 
 
 def cmd_regex_replace(cmd):
@@ -827,7 +827,7 @@ class TgConverter:
         if ext == "tgs":
             for extn in ["webp", "json", "png", "mp4", "gif"]:
                 if recycle_type(extn):
-                    name = outname + "." + extn
+                    name = f"{outname}.{extn}"
                     return await TgConverter.animated_sticker(
                         input_file, name, remove=remove_old
                     )
@@ -836,38 +836,35 @@ class TgConverter:
                     input_file, convert_to="gif", remove_old=remove_old
                 )
                 return await TgConverter.create_webm(input_file, outname, remove=True)
-        # Json -> Tgs
         elif ext == "json":
             if recycle_type("tgs"):
-                name = outname + ".tgs"
+                name = f"{outname}.tgs"
                 return await TgConverter.animated_sticker(
                     input_file, name, remove=remove_old
                 )
-        # Video to Something
         elif ext in ["webm", "mp4", "gif"]:
             for exte in ["webm", "mp4", "gif"]:
                 if recycle_type(exte):
-                    name = outname + "." + exte
+                    name = f"{outname}.{exte}"
                     return await TgConverter.ffmpeg_convert(
                         input_file, name, remove=remove_old
                     )
             for exte in ["png", "jpg", "jpeg", "webp"]:
                 if recycle_type(exte):
-                    name = outname + "." + exte
+                    name = f"{outname}.{exte}"
                     return TgConverter.to_image(input_file, name, remove=remove_old)
-        # Image to Something
         elif ext in ["jpg", "jpeg", "png", "webp"]:
             for extn in ["png", "webp", "ico"]:
                 if recycle_type(extn):
                     img = Image.open(input_file)
-                    name = outname + "." + extn
+                    name = f"{outname}.{extn}"
                     img.save(name, extn.upper())
                     if remove_old:
                         os.remove(input_file)
                     return name
             for extn in ["webm", "gif", "mp4"]:
                 if recycle_type(extn):
-                    name = outname + "." + extn
+                    name = f"{outname}.{extn}"
                     if extn == "webm":
                         input_file = await TgConverter.convert(
                             input_file,
@@ -891,23 +888,19 @@ def _get_value(stri):
 
 
 def safe_load(file, *args, **kwargs):
-    if isinstance(file, str):
-        read = file.split("\n")
-    else:
-        read = file.readlines()
+    read = file.split("\n") if isinstance(file, str) else file.readlines()
     out = {}
     for line in read:
         if ":" in line:  # Ignores Empty & Invalid lines
             spli = line.split(":", maxsplit=1)
             key = spli[0].strip()
             value = _get_value(spli[1])
-            out.update({key: value or []})
+            out[key] = value or []
         elif "-" in line:
             spli = line.split("-", maxsplit=1)
-            where = out[list(out.keys())[-1]]
-            if isinstance(where, list):
-                value = _get_value(spli[1])
-                if value:
+            if value := _get_value(spli[1]):
+                where = out[list(out.keys())[-1]]
+                if isinstance(where, list):
                     where.append(value)
     return out
 
@@ -918,7 +911,7 @@ def get_chat_and_msgid(link):
         return None, None
     _, chat, msg_id = matches[0]
     if chat.isdigit():
-        chat = int("-100" + chat)
+        chat = int(f"-100{chat}")
     return chat, int(msg_id)
 
 
