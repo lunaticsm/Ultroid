@@ -11,14 +11,18 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN pip3 install -U telegraph
 
-EXPOSE 80
-
 COPY installer.sh .
 
 RUN bash installer.sh
 
 # changing workdir
 WORKDIR "/root/TeamUltroid"
+
+EXPOSE 80
+
+ENV PORT 80
+# set hostname to localhost
+ENV HOSTNAME "0.0.0.0"
 
 # start the bot.
 CMD ["bash", "startup"]
