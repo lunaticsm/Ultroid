@@ -138,7 +138,7 @@ async def pass_on(ult):
         msg = await ult.get_reply_message()
         text = msg.message
         title = get_display_name(msg.sender)
-    name = token_hex(8) + ".png"
+    name = f"{token_hex(8)}.png"
     data = {
         "darkMode": dark,
         "theme": theme,

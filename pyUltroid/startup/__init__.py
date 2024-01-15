@@ -29,14 +29,10 @@ def where_hosted():
     if os.getenv("KUBERNETES_PORT"):
         return "qovery | kubernetes"
     if os.getenv("RUNNER_USER") or os.getenv("HOSTNAME"):
-        if os.getenv("USER") == "codespace":
-            return "codespace"
-        return "github actions"
+        return "codespace" if os.getenv("USER") == "codespace" else "github actions"
     if os.getenv("ANDROID_ROOT"):
         return "termux"
-    if os.getenv("FLY_APP_NAME"):
-        return "fly.io"
-    return "local"
+    return "fly.io" if os.getenv("FLY_APP_NAME") else "local"
 
 
 if run_as_module:
