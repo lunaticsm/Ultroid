@@ -11,6 +11,8 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN pip3 install -U telegraph
 
+EXPOSE 80
+
 COPY installer.sh .
 
 RUN bash installer.sh
