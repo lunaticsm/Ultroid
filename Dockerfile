@@ -18,11 +18,9 @@ RUN bash installer.sh
 # changing workdir
 WORKDIR "/root/TeamUltroid"
 
-EXPOSE 80
-
-ENV PORT 80
-# set hostname to localhost
 ENV HOSTNAME "0.0.0.0"
+
+EXPOSE 80
 
 # start the bot.
 CMD ["bash", "startup"]
